@@ -13,7 +13,7 @@ Die Lösung besteht aus zwei Komponenten:
 ---
 
 ## Funktionen
-![managesparxrepos screenshot](Screenshot 2026-05-03 092257.png)
+![managesparxrepos screenshot](Screenshot%202026-05-03%20092257.png)
 
 ### 1. Diagrammexport
 
