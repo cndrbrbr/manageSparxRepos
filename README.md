@@ -11,10 +11,10 @@ Die Lösung besteht aus zwei Komponenten:
 - **Python GUI Tool**: durchsucht Ordner rekursiv und startet den Export für alle Modelle
 
 ---
+![managesparxrepos screenshot](Screenshot%202026-05-03%20092257.png)
+---
 
 ## Funktionen
-![managesparxrepos screenshot](Screenshot%202026-05-03%20092257.png)
-
 ### 1. Diagrammexport
 
 - Exportiert alle Diagramme eines Modells
