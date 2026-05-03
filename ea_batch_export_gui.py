@@ -4,7 +4,6 @@
 #   Sparx Enterprise Architect installiert und COM registriert
 #   export_all_diagrams.js liegt im gleichen Ordner wie diese Python-Datei
 
-import os
 import subprocess
 import threading
 import tkinter as tk
@@ -66,7 +65,10 @@ class App(tk.Tk):
             try:
                 output.mkdir(parents=True)
             except Exception as exc:
-                messagebox.showerror("Fehler", f"Ergebnisordner konnte nicht erstellt werden:\n{exc}")
+                messagebox.showerror(
+                    "Fehler",
+                    f"Ergebnisordner konnte nicht erstellt werden:\n{exc}"
+                )
                 return
 
         script = Path(__file__).with_name("export_all_diagrams.js")
@@ -75,6 +77,10 @@ class App(tk.Tk):
             return
 
         self.start_button.config(state="disabled")
+        self.config(cursor="watch")
+        self.log.config(cursor="watch")
+        self.update_idletasks()
+
         self.log.delete("1.0", "end")
 
         thread = threading.Thread(
@@ -119,6 +125,7 @@ class App(tk.Tk):
 
                 if proc.stdout:
                     self.write_log(proc.stdout)
+
                 if proc.stderr:
                     self.write_log(proc.stderr)
 
@@ -141,9 +148,14 @@ class App(tk.Tk):
         self.log.see("end")
 
     def done(self):
-        self.after(0, lambda: self.start_button.config(state="normal"))
+        def reset_ui():
+            self.start_button.config(state="normal")
+            self.config(cursor="")
+            self.log.config(cursor="")
+            self.update_idletasks()
+
+        self.after(0, reset_ui)
 
 
 if __name__ == "__main__":
     App().mainloop()
-    
