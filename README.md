@@ -1,14 +1,17 @@
 # manageSparxRepos
 manage the Sparx repositories that are gambling around the disk
 
-# Sparx EA Diagram Export Tool
+# Sparx EA Batch Export Tool
 
-Dieses Tool ermöglicht den automatisierten Export aller Diagramme aus Sparx Enterprise Architect Modellen (`.qea`, `.qeax`, `.eap`, `.eapx`, `.feap`), inklusive BPMN-Diagrammen, die unter Elementen wie Aktivitäten oder Businessprozessen hängen.
+Dieses Tool ermöglicht die automatisierte Verarbeitung von Sparx Enterprise Architect Modellen (`.qea`, `.qeax`, `.eap`, `.eapx`, `.feap`):
+
+- **Diagrammexport** (Windows): exportiert alle Diagramme als PNG über die EA-Automation
+- **Elementauswertung** (plattformübergreifend): liest die `t_object`-Tabelle direkt aus `.qea`-Dateien (SQLite) und erzeugt pro Modell eine `names.txt`
 
 Die Lösung besteht aus zwei Komponenten:
 
-- **JScript (Windows Script Host)**: führt den Export über die EA-Automation aus
-- **Python GUI Tool**: durchsucht Ordner rekursiv und startet den Export für alle Modelle
+- **JScript (Windows Script Host)**: führt den Diagrammexport über die EA-Automation aus
+- **Python GUI Tool**: durchsucht Ordner rekursiv, startet den Export und erstellt die Elementauswertung
 
 ---
 ![managesparxrepos screenshot](Screenshot%202026-05-03%20092257.png)
@@ -97,19 +100,41 @@ Das Tool protokolliert:
 
 Bei einzelnen Fehlern läuft der Batch-Export weiter.
 
+### 9. Elementauswertung – `names.txt`
+
+Für jede `.qea`-Datei wird die SQLite-Tabelle `t_object` ausgewertet und eine CSV-Datei `names.txt` im Modell-Ausgabeordner erzeugt.
+
+- Trennzeichen: `;`
+- Kodierung: UTF-8
+- Spalten: `Name;ea_guid;Stereotype;Notes;Datum`
+- Läuft **ohne EA-Installation**, auch auf Linux und macOS
+- `Datum` enthält das Datum der letzten Änderung des Elements (ohne Uhrzeit)
+
+Beispiel:
+
+    Name;ea_guid;Stereotype;Notes;Datum
+    OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess;2026-04-15
+    PaymentService;{E5F6G7H8-...};;;2026-03-01
+
 ---
 
 ## Voraussetzungen
 
-### System
+### Diagrammexport (Windows only)
 
 - Windows
 - Sparx Enterprise Architect installiert
 - EA-COM-Schnittstelle verfügbar
 
-### Python
+### Elementauswertung `names.txt` (plattformübergreifend)
 
+- Windows, Linux oder macOS
 - Python 3.x
+- keine zusätzlichen Python-Pakete erforderlich
+
+### Python GUI
+
+- Python 3.x mit `tkinter`
 - keine zusätzlichen Python-Pakete erforderlich
 
 ---
@@ -140,10 +165,10 @@ Bei einzelnen Fehlern läuft der Batch-Export weiter.
 Das Tool:
 
 1. findet rekursiv alle EA-Dateien
-2. startet für jede Datei das JScript
-3. öffnet das Modell über EA-Automation
-4. exportiert alle Package- und Element-Diagramme
-5. legt die Ergebnisse im Zielordner ab
+2. startet für jede Datei das JScript (nur Windows)
+3. öffnet das Modell über EA-Automation und exportiert alle Diagramme
+4. liest für `.qea`-Dateien die `t_object`-Tabelle per SQLite und schreibt `names.txt`
+5. legt alle Ergebnisse im Zielordner ab
 
 ---
 
@@ -173,7 +198,9 @@ Das Python-Programm nutzt:
 
 - `tkinter` für die GUI
 - `threading`, damit die Oberfläche während des Exports responsiv bleibt
-- `subprocess`, um `cscript.exe` mit dem JScript zu starten
+- `subprocess`, um `cscript.exe` mit dem JScript zu starten (nur Windows)
+- `sqlite3`, um `.qea`-Dateien direkt zu lesen und `names.txt` zu erzeugen
+- `csv`, um die Ausgabe als semikolongetrennte CSV-Datei zu schreiben
 - `pathlib`, um Pfade und Dateisuche zu behandeln
 
 ---
@@ -192,15 +219,19 @@ Das Python-Tool sucht nach:
 
 ## Ausgabeformat
 
-Der Diagrammexport erfolgt als:
+### Diagramme
 
-- PNG
-
-Die Dateinamen werden bereinigt, damit sie unter Windows gültig sind.
-
-Ungültige Zeichen wie diese werden ersetzt:
+Der Diagrammexport erfolgt als PNG. Die Dateinamen werden bereinigt, damit sie unter Windows gültig sind. Ungültige Zeichen werden ersetzt:
 
     < > : " / \ | ? *
+
+### Elementauswertung
+
+Pro `.qea`-Datei wird eine `names.txt` im Modell-Ausgabeordner erzeugt:
+
+    Name;ea_guid;Stereotype;Notes;Datum
+    OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess;2026-04-15
+    PaymentService;{E5F6G7H8-...};;;2026-03-01
 
 ---
 
@@ -224,6 +255,7 @@ Mögliche spätere Erweiterungen:
 - Große Modelle können längere Laufzeiten verursachen.
 - EA wird für jede gefundene Modelldatei über Automation geöffnet.
 - Schreibrechte im Zielordner sind erforderlich.
+- Die `names.txt`-Auswertung funktioniert ohne EA und auch auf Linux/macOS.
 - Bei UNC-Pfaden muss die Basisfreigabe bereits existieren.
 - Bestehende Modellordner werden nicht überschrieben, sondern mit Suffix wie `_2`, `_3` usw. neu angelegt.
 
