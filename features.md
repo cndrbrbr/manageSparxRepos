@@ -38,19 +38,20 @@ Pro verarbeiteter QEA-Datei wird die interne SQLite-Tabelle `t_object` ausgewert
 | `ea_guid`   | `ea_guid`            | Global eindeutige ID des Elements     |
 | `Stereotype`| `Stereotype`         | Zugewiesener Stereotype (kann leer sein) |
 | `Notes`     | `Note`               | Notiztext des Elements (kann leer sein) |
+| `Modified`  | `Modified`           | Datum der letzten Änderung            |
 
 **Beispielzeile:**
 
 ```
-Name;ea_guid;Stereotype;Notes
-OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess für Bestellungen
-PaymentService;{E5F6G7H8-...};;
+Name;ea_guid;Stereotype;Notes;Modified
+OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess für Bestellungen;2026-04-15 10:23:00
+PaymentService;{E5F6G7H8-...};;;2026-03-01 08:00:00
 ```
 
 **Verhalten:**
 - Die Datei `names.txt` wird in denselben Ausgabeordner geschrieben wie die Diagramme des jeweiligen Modells.
 - Enthält ein Feld Semikolons oder Zeilenumbrüche, wird der Feldinhalt in doppelte Anführungszeichen eingeschlossen.
-- Die erste Zeile ist immer der Header (`Name;ea_guid;Stereotype;Notes`).
+- Die erste Zeile ist immer der Header (`Name;ea_guid;Stereotype;Notes;Modified`).
 - QEA-Dateien sind SQLite-Datenbanken und werden direkt per `sqlite3` abgefragt – **ohne** EA-Automation.
 - Dadurch ist diese Auswertung unabhängig von einer installierten EA-Lizenz und kann auch auf Linux/macOS laufen.
 
@@ -66,11 +67,11 @@ def export_names_txt(qea_file: Path, output_dir: Path) -> None:
     con = sqlite3.connect(qea_file)
     try:
         cur = con.execute(
-            "SELECT Name, ea_guid, Stereotype, Note FROM t_object ORDER BY Name"
+            "SELECT Name, ea_guid, Stereotype, Note, Modified FROM t_object ORDER BY Name"
         )
         with open(out_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(["Name", "ea_guid", "Stereotype", "Notes"])
+            writer.writerow(["Name", "ea_guid", "Stereotype", "Notes", "Modified"])
             writer.writerows(cur.fetchall())
     finally:
         con.close()
