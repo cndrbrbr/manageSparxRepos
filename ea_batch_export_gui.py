@@ -144,56 +144,63 @@ class App(tk.Tk):
             self.done()
             return
 
-        for index, ea_file in enumerate(files, start=1):
-            self.write_log(f"[{index}/{len(files)}] {ea_file}\n")
+        try:
+            for index, ea_file in enumerate(files, start=1):
+                self.write_log(f"[{index}/{len(files)}] {ea_file}\n")
 
-            existing_folders = {p for p in output.iterdir() if p.is_dir()}
+                existing_folders = {p for p in output.iterdir() if p.is_dir()}
 
-            if sys.platform == "win32":
-                cmd = [
-                    "cscript.exe",
-                    "//nologo",
-                    str(script),
-                    str(ea_file),
-                    str(output),
-                ]
+                if sys.platform == "win32":
+                    cmd = [
+                        "cscript.exe",
+                        "//nologo",
+                        str(script),
+                        str(ea_file),
+                        str(output),
+                    ]
 
-                try:
-                    proc = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        encoding="mbcs",
-                        errors="replace",
-                    )
+                    try:
+                        proc = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            encoding="mbcs",
+                            errors="replace",
+                        )
 
-                    if proc.stdout:
-                        self.write_log(proc.stdout)
+                        if proc.stdout:
+                            self.write_log(proc.stdout)
 
-                    if proc.stderr:
-                        self.write_log(proc.stderr)
+                        if proc.stderr:
+                            self.write_log(proc.stderr)
 
-                    if proc.returncode != 0:
-                        self.write_log(f"FEHLER: Returncode {proc.returncode}\n")
+                        if proc.returncode != 0:
+                            self.write_log(f"FEHLER: Returncode {proc.returncode}\n")
 
-                except Exception as exc:
-                    self.write_log(f"FEHLER beim Ausführen: {exc}\n")
-            else:
-                self.write_log("  Diagrammexport wird nur unter Windows unterstützt.\n")
-
-            if ea_file.suffix.lower() in QEA_EXTENSIONS:
-                new_folders = {p for p in output.iterdir() if p.is_dir()} - existing_folders
-                if new_folders:
-                    model_out = new_folders.pop()
+                    except Exception as exc:
+                        self.write_log(f"FEHLER beim Ausführen: {exc}\n")
                 else:
-                    model_out = _unique_model_folder(output, ea_file.stem)
-                    model_out.mkdir(parents=True, exist_ok=True)
-                export_names_txt(ea_file, model_out, self.write_log)
+                    self.write_log("  Diagrammexport wird nur unter Windows unterstützt.\n")
 
-            self.write_log("\n")
+                if ea_file.suffix.lower() in QEA_EXTENSIONS:
+                    new_folders = {p for p in output.iterdir() if p.is_dir()} - existing_folders
+                    if new_folders:
+                        model_out = new_folders.pop()
+                    else:
+                        try:
+                            model_out = _unique_model_folder(output, ea_file.stem)
+                            model_out.mkdir(parents=True, exist_ok=True)
+                        except Exception as exc:
+                            self.write_log(f"  FEHLER: Ordner konnte nicht erstellt werden: {exc}\n")
+                            self.write_log("\n")
+                            continue
+                    export_names_txt(ea_file, model_out, self.write_log)
 
-        self.write_log("Fertig.\n")
-        self.done()
+                self.write_log("\n")
+
+            self.write_log("Fertig.\n")
+        finally:
+            self.done()
 
     def write_log(self, text: str):
         self.after(0, lambda: self._append_log(text))
