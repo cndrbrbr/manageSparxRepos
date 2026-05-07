@@ -4,6 +4,9 @@
 #   Sparx Enterprise Architect installiert und COM registriert
 #   export_all_diagrams.js liegt im gleichen Ordner wie diese Python-Datei
 
+import csv
+import re
+import sqlite3
 import subprocess
 import threading
 import tkinter as tk
@@ -11,6 +14,43 @@ from tkinter import filedialog, messagebox
 from pathlib import Path
 
 EA_EXTENSIONS = {".qea", ".qeax", ".eap", ".eapx", ".feap"}
+QEA_EXTENSIONS = {".qea"}
+
+
+def _sanitize_filename(name: str) -> str:
+    s = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    s = re.sub(r'\s+', " ", s).strip().rstrip(".")
+    return s[:120] or "EA_Model"
+
+
+def _unique_model_folder(output_dir: Path, stem: str) -> Path:
+    base = _sanitize_filename(stem)
+    candidate = output_dir / base
+    i = 2
+    while candidate.exists():
+        candidate = output_dir / f"{base}_{i}"
+        i += 1
+    return candidate
+
+
+def export_names_txt(qea_file: Path, output_dir: Path, log_fn) -> None:
+    out_file = output_dir / "names.txt"
+    try:
+        con = sqlite3.connect(f"file:{qea_file}?mode=ro", uri=True)
+        try:
+            cur = con.execute(
+                "SELECT Name, ea_guid, Stereotype, Note FROM t_object ORDER BY Name"
+            )
+            with open(out_file, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(["Name", "ea_guid", "Stereotype", "Notes"])
+                for row in cur:
+                    writer.writerow([v if v is not None else "" for v in row])
+            log_fn(f"  names.txt erstellt: {out_file}\n")
+        finally:
+            con.close()
+    except Exception as exc:
+        log_fn(f"  WARNUNG: names.txt konnte nicht erstellt werden: {exc}\n")
 
 
 class App(tk.Tk):
@@ -106,6 +146,8 @@ class App(tk.Tk):
         for index, ea_file in enumerate(files, start=1):
             self.write_log(f"[{index}/{len(files)}] {ea_file}\n")
 
+            existing_folders = {p for p in output.iterdir() if p.is_dir()}
+
             cmd = [
                 "cscript.exe",
                 "//nologo",
@@ -134,6 +176,15 @@ class App(tk.Tk):
 
             except Exception as exc:
                 self.write_log(f"FEHLER beim Ausführen: {exc}\n")
+
+            if ea_file.suffix.lower() in QEA_EXTENSIONS:
+                new_folders = {p for p in output.iterdir() if p.is_dir()} - existing_folders
+                if new_folders:
+                    model_out = new_folders.pop()
+                else:
+                    model_out = _unique_model_folder(output, ea_file.stem)
+                    model_out.mkdir(parents=True, exist_ok=True)
+                export_names_txt(ea_file, model_out, self.write_log)
 
             self.write_log("\n")
 
