@@ -149,34 +149,37 @@ class App(tk.Tk):
 
             existing_folders = {p for p in output.iterdir() if p.is_dir()}
 
-            cmd = [
-                "cscript.exe",
-                "//nologo",
-                str(script),
-                str(ea_file),
-                str(output),
-            ]
+            if sys.platform == "win32":
+                cmd = [
+                    "cscript.exe",
+                    "//nologo",
+                    str(script),
+                    str(ea_file),
+                    str(output),
+                ]
 
-            try:
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="mbcs" if sys.platform == "win32" else "utf-8",
-                    errors="replace",
-                )
+                try:
+                    proc = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        encoding="mbcs",
+                        errors="replace",
+                    )
 
-                if proc.stdout:
-                    self.write_log(proc.stdout)
+                    if proc.stdout:
+                        self.write_log(proc.stdout)
 
-                if proc.stderr:
-                    self.write_log(proc.stderr)
+                    if proc.stderr:
+                        self.write_log(proc.stderr)
 
-                if proc.returncode != 0:
-                    self.write_log(f"FEHLER: Returncode {proc.returncode}\n")
+                    if proc.returncode != 0:
+                        self.write_log(f"FEHLER: Returncode {proc.returncode}\n")
 
-            except Exception as exc:
-                self.write_log(f"FEHLER beim Ausführen: {exc}\n")
+                except Exception as exc:
+                    self.write_log(f"FEHLER beim Ausführen: {exc}\n")
+            else:
+                self.write_log("  Diagrammexport wird nur unter Windows unterstützt.\n")
 
             if ea_file.suffix.lower() in QEA_EXTENSIONS:
                 new_folders = {p for p in output.iterdir() if p.is_dir()} - existing_folders
