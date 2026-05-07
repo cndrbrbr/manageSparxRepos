@@ -39,11 +39,11 @@ def export_names_txt(qea_file: Path, output_dir: Path, log_fn) -> None:
         con = sqlite3.connect(f"file:{qea_file}?mode=ro", uri=True)
         try:
             cur = con.execute(
-                "SELECT Name, ea_guid, Stereotype, Note, Modified FROM t_object ORDER BY Name"
+                "SELECT Name, ea_guid, Stereotype, Note, DATE(Modified) FROM t_object ORDER BY Name"
             )
             with open(out_file, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
-                writer.writerow(["Name", "ea_guid", "Stereotype", "Notes", "Modified"])
+                writer.writerow(["Name", "ea_guid", "Stereotype", "Notes", "Datum"])
                 for row in cur:
                     writer.writerow([v if v is not None else "" for v in row])
             log_fn(f"  names.txt erstellt: {out_file}\n")
