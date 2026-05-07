@@ -38,7 +38,7 @@ Pro verarbeiteter QEA-Datei wird die interne SQLite-Tabelle `t_object` ausgewert
 | `ea_guid`   | `ea_guid`            | Global eindeutige ID des Elements     |
 | `Stereotype`| `Stereotype`         | Zugewiesener Stereotype (kann leer sein) |
 | `Notes`     | `Note`               | Notiztext des Elements (kann leer sein) |
-| `Datum`     | `Modified`           | Datum der letzten Änderung (nur Datum, ohne Uhrzeit) |
+| `Datum`     | `ModifiedDate`       | Datum der letzten Änderung (nur Datum, ohne Uhrzeit) |
 
 **Beispielzeile:**
 
@@ -67,7 +67,7 @@ def export_names_txt(qea_file: Path, output_dir: Path) -> None:
     con = sqlite3.connect(qea_file)
     try:
         cur = con.execute(
-            "SELECT Name, ea_guid, Stereotype, Note, DATE(Modified) FROM t_object ORDER BY Name"
+            "SELECT Name, ea_guid, Stereotype, Note, DATE(ModifiedDate) FROM t_object ORDER BY Name"
         )
         with open(out_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
