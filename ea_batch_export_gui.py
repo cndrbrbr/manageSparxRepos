@@ -8,6 +8,7 @@ import csv
 import re
 import sqlite3
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -161,7 +162,7 @@ class App(tk.Tk):
                     cmd,
                     capture_output=True,
                     text=True,
-                    encoding="mbcs",
+                    encoding="mbcs" if sys.platform == "win32" else "utf-8",
                     errors="replace",
                 )
 
