@@ -2,6 +2,9 @@
 // Aufruf:
 // cscript //nologo export_all_diagrams.js "C:\Modelle\abc.qea" "C:\ExportRoot"
 
+var XMI_TYPE_EA_11 = 3;
+var XMI_TYPE_NATIVE = 24;
+
 function main() {
     if (WScript.Arguments.length < 2) {
         WScript.Echo("Usage: cscript //nologo export_all_diagrams.js <ea-file> <output-root>");
@@ -37,13 +40,16 @@ function main() {
 
         var project = repo.GetProjectInterface();
         var count = 0;
+        var xmiCount = 0;
 
         for (var i = 0; i < repo.Models.Count; i++) {
             var root = repo.Models.GetAt(i);
+            xmiCount += exportPackagesBelowModelXMI(project, root, modelOut);
             count += exportPackageRecursive(repo, project, root, modelOut, "");
         }
 
         WScript.Echo("Exportiert: " + count + " Diagramme nach " + modelOut);
+        WScript.Echo("Exportiert: " + xmiCount + " Package-XMI-Dateien nach " + modelOut + "\\xmi");
 
         repo.CloseFile();
         repo.Exit();
@@ -62,6 +68,97 @@ function main() {
         } catch (ignore) {}
 
         WScript.Quit(1);
+    }
+}
+
+function exportPackagesBelowModelXMI(project, modelPkg, modelOut) {
+    var count = 0;
+    var modelName = sanitizeFileName(modelPkg.Name);
+    if (modelName.length == 0) {
+        modelName = "Model_" + modelPkg.PackageID;
+    }
+
+    for (var p = 0; p < modelPkg.Packages.Count; p++) {
+        var child = modelPkg.Packages.GetAt(p);
+        count += exportPackageAndChildrenXMI(project, child, modelOut, modelName);
+    }
+
+    return count;
+}
+
+function exportPackageAndChildrenXMI(project, pkg, modelOut, parentPath) {
+    var packageName = sanitizeFileName(pkg.Name);
+    if (packageName.length == 0) {
+        packageName = "Package_" + pkg.PackageID;
+    }
+
+    var packagePath = parentPath && parentPath.length > 0
+        ? parentPath + "\\" + packageName
+        : packageName;
+
+    var count = 0;
+
+    if (exportPackageXMI(project, pkg, modelOut, packagePath, XMI_TYPE_EA_11, "XMI-1.1", "xmi11")) {
+        count++;
+    }
+
+    if (exportPackageXMI(project, pkg, modelOut, packagePath, XMI_TYPE_NATIVE, "Native", "native")) {
+        count++;
+    }
+
+    for (var p = 0; p < pkg.Packages.Count; p++) {
+        var child = pkg.Packages.GetAt(p);
+        count += exportPackageAndChildrenXMI(project, child, modelOut, packagePath);
+    }
+
+    return count;
+}
+
+function exportPackageXMI(project, pkg, modelOut, packagePath, xmiType, label, folderName) {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+
+    var exportFolder = fso.BuildPath(modelOut, "xmi");
+    exportFolder = fso.BuildPath(exportFolder, folderName);
+    ensureFolder(exportFolder);
+
+    var fileBase = sanitizeFileName(packagePath.replace(/\\/g, "__"));
+    if (fileBase.length == 0) {
+        fileBase = "Package_" + pkg.PackageID;
+    }
+
+    var outFile = fso.BuildPath(exportFolder, fileBase + "__" + label + ".xml");
+    outFile = avoidOverwrite(outFile);
+
+    try {
+        WScript.Echo("Exportiere Package als " + label + ": " + packagePath);
+        WScript.Echo("Nach: " + outFile);
+
+        // ExportPackageXMI erwartet die Package-GUID im XML-Format.
+        // xmiEA11 = 3, xmiNative = 24, DiagramXML = 1, DiagramImage = -1, FormatXML = 1, UseDTD = 0.
+        var result = project.ExportPackageXMI(
+            project.GUIDtoXML(pkg.PackageGUID),
+            xmiType,
+            1,
+            -1,
+            1,
+            0,
+            outFile
+        );
+
+        if (result != null && String(result).length > 0) {
+            WScript.Echo(label + " Export Ergebnis: " + result);
+        }
+
+        if (!fso.FileExists(outFile)) {
+            WScript.Echo("WARNUNG: " + label + " Datei wurde nicht erstellt: " + outFile);
+            return false;
+        }
+
+        return true;
+
+    } catch (e) {
+        WScript.Echo("WARNUNG: Fehler beim " + label + " Export von Package '" + packagePath + "': " + e.message);
+        return false;
     }
 }
 
