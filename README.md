@@ -6,12 +6,12 @@ manage the Sparx repositories that are gambling around the disk
 Dieses Tool ermöglicht die automatisierte Verarbeitung von Sparx Enterprise Architect Modellen (`.qea`, `.qeax`, `.eap`, `.eapx`, `.feap`):
 
 - **Diagrammexport** (Windows): exportiert alle Diagramme als PNG über die EA-Automation
-- **Root-Package-XMI-Export** (Windows): exportiert jedes Root-Package zusätzlich als XMI 1.1
+- **Rekursiver Package-XMI-Export** (Windows): exportiert alle Packages unterhalb der Models zusätzlich als XMI-Dateien
 - **Elementauswertung** (plattformübergreifend): liest die `t_object`-Tabelle direkt aus `.qea`-Dateien (SQLite) und erzeugt pro Modell eine `names.txt`
 
 Die Lösung besteht aus zwei Komponenten:
 
-- **JScript (Windows Script Host)**: führt den Diagrammexport über die EA-Automation aus
+- **JScript (Windows Script Host)**: führt den Diagrammexport und die XMI-Exporte über die EA-Automation aus
 - **Python GUI Tool**: durchsucht Ordner rekursiv, startet den Export und erstellt die Elementauswertung
 
 ---
@@ -19,6 +19,7 @@ Die Lösung besteht aus zwei Komponenten:
 ---
 
 ## Funktionen
+
 ### 1. Diagrammexport
 
 - Exportiert alle Diagramme eines Modells
@@ -28,26 +29,49 @@ Die Lösung besteht aus zwei Komponenten:
   - ArchiMate
 - Exportiert als PNG-Dateien
 
-### 2. Root-Package-XMI-Export
+### 2. Rekursiver Package-XMI-Export
 
-Zusätzlich wird jedes Root-Package des EA-Repositories als XMI 1.1 exportiert.
+Zusätzlich werden alle Packages unterhalb der Root-Models rekursiv als XMI-Dateien exportiert.
 
-- Exportformat: XMI 1.1 (`xmiEA11`)
-- Ausgabeordner: `<Modellordner>\xmi`
-- Dateiname:
+Für jedes Package werden zwei Exportformate erzeugt:
 
-    <RootPackage>__XMI-1.1.xml
+- XMI 1.1 (`xmiEA11`)
+- Native EA XML (`xmiNative`)
 
-- Der Export erfolgt über die EA-Automation (`Project.ExportPackageXMI`)
-- Vorhandene Dateien werden nicht überschrieben
+Der Export erfolgt über die EA-Automation mit:
+
+- `Project.ExportPackageXMI(...)`
+
+Die Dateien werden in getrennten Ordnern abgelegt:
+
+```text
+<Modellordner>\xmi\xmi11
+<Modellordner>\xmi\native
+```
+
+Dateinamen enthalten den vollständigen Package-Pfad, damit keine Namenskollisionen entstehen.
 
 Beispiel:
 
-    <Zielordner>
-     └── MeinModell
-          └── xmi
-               ├── BusinessArchitecture__XMI-1.1.xml
-               └── ApplicationArchitecture__XMI-1.1.xml
+```text
+Export/
+ └── MeinRepository/
+      └── xmi/
+           ├── xmi11/
+           │    ├── Business__Applications__CRM__XMI-1.1.xml
+           │    └── Business__Processes__Order__XMI-1.1.xml
+           │
+           └── native/
+                ├── Business__Applications__CRM__Native.xml
+                └── Business__Processes__Order__Native.xml
+```
+
+Eigenschaften:
+
+- rekursiver Export aller Unterpackages
+- robuste Fehlerbehandlung pro Package
+- vorhandene Dateien werden nicht überschrieben
+- geeignet für Versionsverwaltung und Package-basierte Archivierung
 
 ### 3. Unterstützung von Element-Diagrammen
 
@@ -66,12 +90,14 @@ Die Ausgabe erfolgt strukturiert nach Modell, Package und Elementpfad.
 
 Beispiel:
 
-    <Zielordner>
-     └── <Modellname>
-          └── <Package>
-               └── <SubPackage>
-                    └── <Element>
-                         └── Diagramm.png
+```text
+<Zielordner>
+ └── <Modellname>
+      └── <Package>
+           └── <SubPackage>
+                └── <Element>
+                     └── Diagramm.png
+```
 
 ### 5. Eindeutige Dateinamen
 
@@ -83,7 +109,9 @@ Dateinamen enthalten:
 
 Beispiel:
 
-    Business__OrderProcessing__Process1__MyDiagram__ID-123.png
+```text
+Business__OrderProcessing__Process1__MyDiagram__ID-123.png
+```
 
 ### 6. Batch-Verarbeitung
 
@@ -102,6 +130,8 @@ Die Python-GUI bietet:
 - Start-Button
 - Live-Log
 - Wait-Cursor während der Verarbeitung
+
+Zusätzlich kann das Tool direkt über `start.bat` gestartet werden.
 
 ### 8. Robuste Ordnererzeugung
 
@@ -135,6 +165,30 @@ Für jede `.qea`-Datei wird die SQLite-Tabelle `t_object` ausgewertet und eine C
 
 Beispiel:
 
-    Name;ea_guid;Stereotype;Notes;Datum
-    OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess;2026-04-15
-    PaymentService;{E5F6G7H8-...};;;2026-03-01
+```text
+Name;ea_guid;Stereotype;Notes;Datum
+OrderProcess;{A1B2C3D4-...};BPMN2.0;Hauptprozess;2026-04-15
+PaymentService;{E5F6G7H8-...};;;2026-03-01
+```
+
+## Starten
+
+### Windows GUI starten
+
+Einfach per Doppelklick:
+
+```text
+start.bat
+```
+
+oder manuell:
+
+```bash
+python ea_batch_export_gui.py
+```
+
+### Direktes Script starten
+
+```cmd
+cscript //nologo export_all_diagrams.js "C:\Modelle\abc.qea" "C:\ExportRoot"
+```
