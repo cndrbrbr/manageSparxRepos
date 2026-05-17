@@ -37,13 +37,18 @@ function main() {
 
         var project = repo.GetProjectInterface();
         var count = 0;
+        var xmiCount = 0;
 
         for (var i = 0; i < repo.Models.Count; i++) {
             var root = repo.Models.GetAt(i);
+            if (exportRootPackageXMI(project, root, modelOut)) {
+                xmiCount++;
+            }
             count += exportPackageRecursive(repo, project, root, modelOut, "");
         }
 
         WScript.Echo("Exportiert: " + count + " Diagramme nach " + modelOut);
+        WScript.Echo("Exportiert: " + xmiCount + " Root-Package-XMI-Dateien nach " + modelOut);
 
         repo.CloseFile();
         repo.Exit();
@@ -62,6 +67,53 @@ function main() {
         } catch (ignore) {}
 
         WScript.Quit(1);
+    }
+}
+
+function exportRootPackageXMI(project, rootPkg, modelOut) {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+
+    var rootName = sanitizeFileName(rootPkg.Name);
+    if (rootName.length == 0) {
+        rootName = "Root_" + rootPkg.PackageID;
+    }
+
+    var xmiFolder = fso.BuildPath(modelOut, "xmi");
+    ensureFolder(xmiFolder);
+
+    var outFile = fso.BuildPath(xmiFolder, rootName + "__XMI-1.1.xml");
+    outFile = avoidOverwrite(outFile);
+
+    try {
+        WScript.Echo("Exportiere Root-Package als XMI 1.1: " + rootPkg.Name);
+        WScript.Echo("Nach: " + outFile);
+
+        // ExportPackageXMI erwartet die Package-GUID im XML-Format.
+        // xmiEA11 = 3, DiagramXML = 1, DiagramImage = -1, FormatXML = 1, UseDTD = 0.
+        var result = project.ExportPackageXMI(
+            project.GUIDtoXML(rootPkg.PackageGUID),
+            3,
+            1,
+            -1,
+            1,
+            0,
+            outFile
+        );
+
+        if (result != null && String(result).length > 0) {
+            WScript.Echo("XMI-Export Ergebnis: " + result);
+        }
+
+        if (!fso.FileExists(outFile)) {
+            WScript.Echo("WARNUNG: XMI-Datei wurde nicht erstellt: " + outFile);
+            return false;
+        }
+
+        return true;
+
+    } catch (e) {
+        WScript.Echo("WARNUNG: Fehler beim XMI-Export von Root-Package '" + rootPkg.Name + "': " + e.message);
+        return false;
     }
 }
 
